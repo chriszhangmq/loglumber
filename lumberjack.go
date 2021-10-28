@@ -37,6 +37,7 @@ import (
 
 const (
 	dateFormat       = "2006-01-02"
+	timeFormat       = "2006-01-02_15:04:05"
 	backupTimeFormat = "2006-01-02T15-04-05"
 	compressSuffix   = ".gz"
 	//默认1PB分割一次（即：永远不按照大小分割）
@@ -583,11 +584,11 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 	endDate := t.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
-		endTimeStamp, _ := time.Parse(dateFormat, endDate)
+		endTimeStamp, _ := time.Parse(timeFormat, endDate)
 		lastTimestamp = endTimeStamp.Unix()
 	} else {
 		//local
-		endTimeStamp, _ := time.ParseInLocation(dateFormat, endDate, time.Local)
+		endTimeStamp, _ := time.ParseInLocation(timeFormat, endDate, time.Local)
 		lastTimestamp = endTimeStamp.Unix()
 	}
 	fmt.Println(lastTimestamp)
