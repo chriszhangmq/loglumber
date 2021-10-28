@@ -171,6 +171,7 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	if l.SplitDay > 0 && l.isNextDay(l.LocalTime) {
 		l.updateLastTimeOfToday(l.LocalTime)
 		l.updateCurrentTimestamp(l.LocalTime)
+		fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
 		l.splitDayCount++
 		//是否达到分割要求
 		if l.SplitDay <= l.splitDayCount {
@@ -589,6 +590,7 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 		endTimeStamp, _ := time.ParseInLocation(dateFormat, endDate, time.Local)
 		lastTimestamp = endTimeStamp.Unix()
 	}
+	fmt.Println(lastTimestamp)
 }
 
 //更新当前时间戳
@@ -598,10 +600,12 @@ func (l *Logger) updateCurrentTimestamp(local bool) {
 		t = t.UTC()
 	}
 	currentTimestamp = t.Unix()
+	fmt.Println(currentTimestamp)
 }
 
 //当前时间是否超过0点（进入下一天）
 func (l *Logger) isNextDay(local bool) bool {
 	l.updateCurrentTimestamp(local)
+	fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
 	return currentTimestamp > lastTimestamp
 }
