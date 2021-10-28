@@ -610,7 +610,7 @@ func (l *Logger) updateYesterdayTime(local bool) {
 	if !local {
 		t = t.UTC()
 	}
-	t = t.Add(-1 * time.Hour * 24)
+	t = t.AddDate(0, 0, -1)
 	endDate := t.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
