@@ -141,7 +141,7 @@ var (
 	lastTimestamp int64
 )
 
-func (l *Logger) init() {
+func (l *Logger) Init() {
 	l.updateLastTimeOfToday(l.LocalTime)
 	l.updateCurrentTimestamp(l.LocalTime)
 }
