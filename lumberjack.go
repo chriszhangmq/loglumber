@@ -141,7 +141,7 @@ var (
 	//当天的23时59分时间戳
 	lastTimestamp int64
 	//昨天的23时59分时间戳
-	yesterdayTimestamp int64
+	yesterdayLastTimestamp int64
 	//执行按天分割操作
 	isSplitDay bool
 )
@@ -177,7 +177,7 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	if l.SplitDay > 0 && l.isNextDay(l.LocalTime) {
 		l.updateLastTimeOfToday(l.LocalTime)
 		l.updateYesterdayTime(l.LocalTime)
-		fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
+		fmt.Println("==========================currentTimestamp=  ", currentTimestamp, "===   lastTimestamp= ", lastTimestamp)
 		l.splitDayCount++
 		//是否达到分割要求
 		if l.SplitDay <= l.splitDayCount {
@@ -297,7 +297,7 @@ func backupName(name string, local bool) string {
 		t = t.UTC()
 	}
 	if isSplitDay {
-		timestamp = time.Unix(lastTimestamp, 0).Format(backupTimeFormat)
+		timestamp = time.Unix(yesterdayLastTimestamp, 0).Format(backupTimeFormat)
 		fmt.Println("====================================== ", timestamp)
 	} else {
 		timestamp = t.Format(backupTimeFormat)
@@ -606,21 +606,19 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 }
 
 func (l *Logger) updateYesterdayTime(local bool) {
-	t := currentTime()
-	if !local {
-		t = t.UTC()
-	}
-	t = t.AddDate(0, 0, -1)
-	endDate := t.Format(dateFormat) + "_23:59:59"
+	yesterdayTime := time.Unix(currentTimestamp, 0).AddDate(0, 0, -1)
+	yesterdayLastTime := yesterdayTime.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
-		endTimeStamp, _ := time.Parse(timeFormat, endDate)
-		yesterdayTimestamp = endTimeStamp.Unix()
+		endTimeStamp, _ := time.Parse(timeFormat, yesterdayLastTime)
+		yesterdayLastTimestamp = endTimeStamp.Unix()
 	} else {
 		//local
-		endTimeStamp, _ := time.ParseInLocation(timeFormat, endDate, time.Local)
-		yesterdayTimestamp = endTimeStamp.Unix()
+		endTimeStamp, _ := time.ParseInLocation(timeFormat, yesterdayLastTime, time.Local)
+		yesterdayLastTimestamp = endTimeStamp.Unix()
 	}
+	fmt.Println("===============================yesterdayLastTimestamp = ", yesterdayLastTimestamp)
+
 }
 
 //更新当前时间戳
