@@ -175,7 +175,6 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 
 	//按天分割日志
 	if l.SplitDay > 0 && l.isNextDay(l.LocalTime) {
-		l.updateCurrentTimestamp(l.LocalTime)
 		l.updateLastTimeOfToday(l.LocalTime)
 		l.updateYesterdayTime(l.LocalTime)
 		fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
@@ -607,12 +606,11 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 }
 
 func (l *Logger) updateYesterdayTime(local bool) {
-	aDayAgo, _ := time.ParseDuration("-24h")
 	t := currentTime()
 	if !local {
 		t = t.UTC()
 	}
-	t = t.Add(aDayAgo)
+	t = t.Add(-1 * time.Hour * 24)
 	endDate := t.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
