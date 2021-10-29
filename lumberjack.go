@@ -40,8 +40,9 @@ import (
 )
 
 const (
-	dateFormat       = "2006-01-02"
-	timeFormat       = "2006-01-02_15:04:05"
+	dateFormat = "2006-01-02"
+	timeFormat = "2006-01-02_15:04:05"
+	//压缩文件名的时间格式
 	backupTimeFormat = "2006-01-02T15-04-05"
 	compressSuffix   = ".gz"
 	//默认1GB分割一次
