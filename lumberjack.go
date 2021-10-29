@@ -124,6 +124,9 @@ type Logger struct {
 	//日志后缀
 	FileSuffix string `json:"FileSuffix" yaml:"FileSuffix"`
 
+	//日志中的时间格式
+	FileTimeFormat string `json:"FileTimeFormat" yaml:"FileTimeFormat"`
+
 	//统计过了几天：是否到达需要分割日志的时候
 	splitDayCount int
 	//全路径的日志名
@@ -744,9 +747,9 @@ func (l *Logger) changeFileNameByTime(lastTime string) {
 	var err error
 	//时间字符串 =》 当前字符串的时间格式
 	if l.LocalTime {
-		newFileTime, err = time.ParseInLocation(timeFormat, lastTime, time.Local)
+		newFileTime, err = time.ParseInLocation(l.FileTimeFormat, lastTime, time.Local)
 	} else {
-		newFileTime, err = time.Parse(timeFormat, lastTime)
+		newFileTime, err = time.Parse(l.FileTimeFormat, lastTime)
 	}
 	if err != nil {
 		log.Fatal(err)
