@@ -757,16 +757,12 @@ func (l *Logger) changeFileNameByTime(lastTime string) {
 	//当前字符串的时间格式 =》 时间戳 =》 log文件的时间格式
 	newFileTimestamp := newFileTime.Unix()
 	//新文件名
-	newFileName := l.FileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat) + l.FileSuffix
-	//fmt.Println(newFileName)
+	newFileName := l.FileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat)
 	//更改文件名
-	l.changeFileName(l.PathName, l.FileName, newFileName)
+	l.changeFileName(l.PathName, l.FileName+l.FileSuffix, newFileName+l.FileSuffix)
 }
 
 func (l *Logger) changeFileName(pathName string, odlFileName string, newFileName string) {
-	//a := path.Join(pathName, odlFileName)
-	//b := path.Join(pathName, newFileName)
-	//fmt.Println(a, b)
 	err := os.Rename(path.Join(pathName, odlFileName), path.Join(pathName, newFileName))
 	if err != nil {
 		panic(err)
