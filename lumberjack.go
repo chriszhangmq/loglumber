@@ -179,11 +179,14 @@ func (l *Logger) Init() {
 	if isExist {
 		//获取日志更新时间
 		logFileUpdateTime := getLogFileUpdateTime(l.fullPathFileName)
+		//仅当日志文件的最后一条记录时间 <= 昨天23:29:59，才执行文件压缩
 		if len(logFileUpdateTime) > 0 && l.strTime2TimeStamp(logFileUpdateTime) <= yesterdayLastTimestamp {
 			//改名字
 			newLogFileName := l.changeFileNameByTime(logFileUpdateTime)
-			//启动时，处理文件：压缩、删除
+			//启动时，处理需要上次推出程序未压缩的日志文件
 			_ = l.compressFiles(newLogFileName)
+			//启动时处理文件：压缩、删除
+			_ = l.millRunOnce()
 		}
 	}
 }
@@ -808,11 +811,6 @@ func (l *Logger) compressFiles(fileName string) error {
 			errCompress := compressLogFile(fn, fn+compressSuffix)
 			if errCompress != nil {
 				err = errCompress
-			}
-			//删除源文件
-			errRemove := os.Remove(filepath.Join(l.dir(), remaining.Name()))
-			if err == nil && errRemove != nil {
-				err = errRemove
 			}
 		}
 	}
