@@ -27,8 +27,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -65,7 +68,7 @@ var _ io.WriteCloser = (*Logger)(nil)
 // `name-timestamp.ext` where name is the filename without the extension,
 // timestamp is the time at which the log was rotated formatted with the
 // time.Time format of `2006-01-02T15-04-05.000` and the extension is the
-// original extension.  For example, if your Logger.Filename is
+// original extension.  For example, if your Logger.fullPathFileName is
 // `/var/log/foo/server.log`, a backup created at 6:30pm on Nov 11 2016 would
 // use the filename `/var/log/foo/server-2016-11-04T18-30-00.000.log`
 //
@@ -80,41 +83,51 @@ var _ io.WriteCloser = (*Logger)(nil)
 //
 // If MaxBackups and MaxAge are both 0, no old log files will be deleted.
 type Logger struct {
-	// Filename is the file to write logs to.  Backup log files will be retained
+	// fullPathFileName is the file to write logs to.  Backup log files will be retained
 	// in the same directory.  It uses <processname>-lumberjack.log in
 	// os.TempDir() if empty.
-	Filename string `json:"filename" yaml:"filename"`
 
 	// MaxSize is the maximum size in megabytes of the log file before it gets
 	// rotated. It defaults to 100 megabytes.
-	MaxSize int `json:"maxsize" yaml:"maxsize"`
+	MaxSize int `json:"MaxSize" yaml:"MaxSize"`
 
 	// MaxAge is the maximum number of days to retain old log files based on the
 	// timestamp encoded in their filename.  Note that a day is defined as 24
 	// hours and may not exactly correspond to calendar days due to daylight
 	// savings, leap seconds, etc. The default is not to remove old log files
 	// based on age.
-	MaxAge int `json:"maxage" yaml:"maxage"`
+	MaxAge int `json:"MaxAge" yaml:"MaxAge"`
 
 	// MaxBackups is the maximum number of old log files to retain.  The default
 	// is to retain all old log files (though MaxAge may still cause them to get
 	// deleted.)
-	MaxBackups int `json:"maxbackups" yaml:"maxbackups"`
+	MaxBackups int `json:"MaxBackups" yaml:"MaxBackups"`
 
 	// LocalTime determines if the time used for formatting the timestamps in
 	// backup files is the computer's local time.  The default is to use UTC
 	// time.
-	LocalTime bool `json:"localtime" yaml:"localtime"`
+	LocalTime bool `json:"LocalTime" yaml:"LocalTime"`
 
 	// Compress determines if the rotated log files should be compressed
 	// using gzip. The default is not to perform compression.
-	Compress bool `json:"compress" yaml:"compress"`
+	Compress bool `json:"Compress" yaml:"Compress"`
 
 	//日志分割单位：天
-	SplitDay int `json:"splitday" yaml:"splitday"`
+	SplitDay int `json:"SplitDay" yaml:"SplitDay"`
+
+	//日志保存路径
+	PathName string `json:"PathName" yaml:"PathName"`
+
+	//日志名称
+	FileName string `json:"FileName" yaml:"FileName"`
+
+	//日志后缀
+	FileSuffix string `json:"FileSuffix" yaml:"FileSuffix"`
 
 	//统计过了几天：是否到达需要分割日志的时候
 	splitDayCount int
+	//全路径的日志名
+	fullPathFileName string
 
 	size int64
 	file *os.File
@@ -151,7 +164,25 @@ var (
 func (l *Logger) Init() {
 	updateLastTimeOfToday(l.LocalTime)
 	updateCurrentTimestamp(l.LocalTime)
+	l.fullPathFileName = path.Join(l.PathName, l.FileName+l.FileSuffix)
 	isSplitDay = false
+	//若日志文件并非当天的，则执行打包命令
+	isExist, err := pathFileExist(l.fullPathFileName)
+	if err != nil {
+		panic(err)
+	}
+	if isExist {
+		//获取日志更新时间
+		logFileUpdateTime := getLogFileUpdateTime(l.fullPathFileName)
+		if len(logFileUpdateTime) > 0 {
+			//改名字
+			l.changeFileNameByTime(logFileUpdateTime)
+			//压缩文件
+			if err := l.rotate(); err != nil {
+				panic(err)
+			}
+		}
+	}
 }
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -337,8 +368,8 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 
 // filename generates the name of the logfile from the current time.
 func (l *Logger) filename() string {
-	if l.Filename != "" {
-		return l.Filename
+	if l.fullPathFileName != "" {
+		return l.fullPathFileName
 	}
 	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
 	return filepath.Join(os.TempDir(), name)
@@ -637,4 +668,104 @@ func updateCurrentTimestamp(local bool) {
 func isNextDay(local bool) bool {
 	updateCurrentTimestamp(local)
 	return nowTimestamp > lastTimestamp
+}
+
+//读取日志文件非空的最后一行，并获取时间
+func getLogFileUpdateTime(filePath string) string {
+	//读取最后一行
+	lastLine := getLastLineWithSeek(filePath)
+	fmt.Println(lastLine)
+	//获取改行中的时间
+	lastTime := getTimeFromStr(lastLine)
+	fmt.Println(lastTime)
+	return lastTime
+}
+
+func getTimeFromStr(str string) string {
+	planRegx := regexp.MustCompile("^([0-9]|[ ]|[-]|[:])+")
+	subs := planRegx.FindStringSubmatch(str)
+	if len(subs) > 0 {
+		return strings.TrimSpace(subs[0])
+	}
+	return ""
+}
+
+func getLastLineWithSeek(filepath string) string {
+	fileHandle, err := os.Open(filepath)
+	if err != nil {
+		panic("Cannot open file")
+	}
+	defer fileHandle.Close()
+	var line string
+	var cursor int64 = 0
+	stat, _ := fileHandle.Stat()
+	fileSize := stat.Size()
+	for fileSize > 0 {
+		cursor -= 1
+		if _, err := fileHandle.Seek(cursor, io.SeekEnd); err != nil {
+			panic(err)
+		}
+		char := make([]byte, 1)
+		if _, err := fileHandle.Read(char); err != nil {
+			panic(err)
+		}
+		//是否为非空的倒数第一行
+		if cursor != -1 && (char[0] == '\n' || char[0] == '\r') && !strIsNull(line) {
+			break
+		}
+		line = string(char) + line
+		//遍历到文件开头
+		if cursor == -fileSize {
+			break
+		}
+	}
+	//返回非空的倒数第一行
+	return strings.TrimSpace(line)
+}
+
+func strIsNull(line string) bool {
+	temp := strings.TrimSpace(line)
+	return len(temp) <= 0 || temp == ""
+}
+
+func pathFileExist(filePath string) (bool, error) {
+	_, err := os.Stat(filePath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func (l *Logger) changeFileNameByTime(lastTime string) {
+	var newFileTime time.Time
+	var err error
+	//时间字符串 =》 当前字符串的时间格式
+	if l.LocalTime {
+		newFileTime, err = time.ParseInLocation(timeFormat, lastTime, time.Local)
+	} else {
+		newFileTime, err = time.Parse(timeFormat, lastTime)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	//当前字符串的时间格式 =》 时间戳 =》 log文件的时间格式
+	newFileTimestamp := newFileTime.Unix()
+	//新文件名
+	newFileName := l.FileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat) + l.FileSuffix
+	//fmt.Println(newFileName)
+	//更改文件名
+	l.changeFileName(l.PathName, l.FileName, newFileName)
+}
+
+func (l *Logger) changeFileName(pathName string, odlFileName string, newFileName string) {
+	//a := path.Join(pathName, odlFileName)
+	//b := path.Join(pathName, newFileName)
+	//fmt.Println(a, b)
+	err := os.Rename(path.Join(pathName, odlFileName), path.Join(pathName, newFileName))
+	if err != nil {
+		panic(err)
+	}
 }
