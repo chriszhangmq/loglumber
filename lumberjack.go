@@ -31,6 +31,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -180,9 +181,9 @@ func (l *Logger) Init() {
 		logFileUpdateTime := getLogFileUpdateTime(l.fullPathFileName)
 		if len(logFileUpdateTime) > 0 && l.strTime2TimeStamp(logFileUpdateTime) <= yesterdayLastTimestamp {
 			//改名字
-			l.changeFileNameByTime(logFileUpdateTime)
+			newLogFileName := l.changeFileNameByTime(logFileUpdateTime)
 			//启动时，处理文件：压缩、删除
-			_ = l.millRunOnce()
+			_ = l.compressFiles(newLogFileName)
 		}
 	}
 }
@@ -736,7 +737,7 @@ func pathFileExist(filePath string) (bool, error) {
 	return false, err
 }
 
-func (l *Logger) changeFileNameByTime(lastTime string) {
+func (l *Logger) changeFileNameByTime(lastTime string) string {
 	var newFileTime time.Time
 	var err error
 	//时间字符串 =》 当前字符串的时间格式
@@ -754,6 +755,7 @@ func (l *Logger) changeFileNameByTime(lastTime string) {
 	newFileName := l.FileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat)
 	//更改文件名
 	l.changeFileName(l.PathName, l.FileName+l.FileSuffix, newFileName+l.FileSuffix)
+	return newFileName + l.FileSuffix
 }
 
 func (l *Logger) changeFileName(pathName string, odlFileName string, newFileName string) {
@@ -776,4 +778,44 @@ func (l *Logger) strTime2TimeStamp(strTime string) int64 {
 		log.Fatal(err)
 	}
 	return tmpTime.Unix()
+}
+
+func (l *Logger) compressFiles(fileName string) error {
+	files, err := l.oldLogFiles()
+	if err != nil {
+		return err
+	}
+
+	var remaining logInfo
+
+	if l.MaxAge > 0 {
+		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
+		updateCurrentTimestamp(l.LocalTime)
+		cutoff := nowTime.Add(-1 * diff)
+		for _, f := range files {
+			if f.Name() == fileName && f.timestamp.Unix() > cutoff.Unix() {
+				remaining = f
+				break
+			}
+		}
+	}
+
+	if l.Compress {
+		//当前文件需要压缩
+		if !reflect.DeepEqual(remaining, logInfo{}) && !strings.HasSuffix(remaining.Name(), compressSuffix) {
+			//压缩
+			fn := filepath.Join(l.dir(), remaining.Name())
+			errCompress := compressLogFile(fn, fn+compressSuffix)
+			if errCompress != nil {
+				err = errCompress
+			}
+			//删除源文件
+			errRemove := os.Remove(filepath.Join(l.dir(), remaining.Name()))
+			if err == nil && errRemove != nil {
+				err = errRemove
+			}
+		}
+	}
+
+	return err
 }
