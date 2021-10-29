@@ -167,7 +167,7 @@ var (
 func (l *Logger) Init() {
 	updateLastTimeOfToday(l.LocalTime)
 	updateCurrentTimestamp(l.LocalTime)
-	l.fullPathFileName = path.Join(l.PathName, l.FileName+l.FileSuffix)
+	l.fullPathFileName = l.PathName + l.FileName + l.FileSuffix
 	isSplitDay = false
 	//若日志文件并非当天的，则执行打包命令
 	isExist, err := pathFileExist(l.fullPathFileName)
