@@ -79,11 +79,11 @@ var _ io.WriteCloser = (*Logger)(nil)
 // Whenever a new logfile gets created, old log files may be deleted.  The most
 // recent files according to the encoded timestamp will be retained, up to a
 // number equal to LogMaxSaveQuantity (or all of them if LogMaxSaveQuantity is 0).  Any files
-// with an encoded timestamp older than LogMaxAge days are deleted, regardless of
+// with an encoded timestamp older than LogMaxSaveDay days are deleted, regardless of
 // LogMaxSaveQuantity.  Note that the time encoded in the timestamp is the rotation
 // time, which may differ from the last time that file was written to.
 //
-// If LogMaxSaveQuantity and LogMaxAge are both 0, no old log files will be deleted.
+// If LogMaxSaveQuantity and LogMaxSaveDay are both 0, no old log files will be deleted.
 type Logger struct {
 	// fullPathFileName is the file to write logs to.  Backup log files will be retained
 	// in the same directory.  It uses <processname>-lumberjack.log in
@@ -93,15 +93,15 @@ type Logger struct {
 	// rotated. It defaults to 100 megabytes.
 	LogMaxSize int `json:"LogMaxSize" yaml:"LogMaxSize"`
 
-	// LogMaxAge is the maximum number of days to retain old log files based on the
+	// LogMaxSaveDay is the maximum number of days to retain old log files based on the
 	// timestamp encoded in their filename.  Note that a day is defined as 24
 	// hours and may not exactly correspond to calendar days due to daylight
 	// savings, leap seconds, etc. The default is not to remove old log files
 	// based on age.
-	LogMaxAge int `json:"LogMaxAge" yaml:"LogMaxAge"`
+	LogMaxSaveDay int `json:"LogMaxSaveDay" yaml:"LogMaxSaveDay"`
 
 	// LogMaxSaveQuantity is the maximum number of old log files to retain.  The default
-	// is to retain all old log files (though LogMaxAge may still cause them to get
+	// is to retain all old log files (though LogMaxSaveDay may still cause them to get
 	// deleted.)
 	LogMaxSaveQuantity int `json:"LogMaxSaveQuantity" yaml:"LogMaxSaveQuantity"`
 
@@ -385,9 +385,9 @@ func (l *Logger) filename() string {
 // millRunOnce performs compression and removal of stale log files.
 // Log files are compressed if enabled via configuration and old log
 // files are removed, keeping at most l.LogMaxSaveQuantity files, as long as
-// none of them are older than LogMaxAge.
+// none of them are older than LogMaxSaveDay.
 func (l *Logger) millRunOnce() error {
-	if l.LogMaxSaveQuantity == 0 && l.LogMaxAge == 0 && !l.Compress {
+	if l.LogMaxSaveQuantity == 0 && l.LogMaxSaveDay == 0 && !l.Compress {
 		return nil
 	}
 
@@ -418,8 +418,8 @@ func (l *Logger) millRunOnce() error {
 		}
 		files = remaining
 	}
-	if l.LogMaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxAge))
+	if l.LogMaxSaveDay > 0 {
+		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxSaveDay))
 		updateCurrentTimestamp(l.LocalTime)
 		cutoff := nowTime.Add(-1 * diff)
 
@@ -792,8 +792,8 @@ func (l *Logger) compressFiles(fileName string) error {
 
 	var remaining logInfo
 
-	if l.LogMaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxAge))
+	if l.LogMaxSaveDay > 0 {
+		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxSaveDay))
 		updateCurrentTimestamp(l.LocalTime)
 		cutoff := nowTime.Add(-1 * diff)
 		for _, f := range files {

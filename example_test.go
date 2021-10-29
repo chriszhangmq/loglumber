@@ -11,7 +11,7 @@ func Example() {
 		fullPathFileName:   "/var/log/myapp/foo.log",
 		LogMaxSize:         500, // megabytes
 		LogMaxSaveQuantity: 3,
-		LogMaxAge:          28,   // days
+		LogMaxSaveDay:      28,   // days
 		Compress:           true, // disabled by default
 	})
 }

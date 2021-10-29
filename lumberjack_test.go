@@ -388,7 +388,7 @@ func TestMaxAge(t *testing.T) {
 	l := &Logger{
 		fullPathFileName: filename,
 		LogMaxSize:       10,
-		LogMaxAge:        1,
+		LogMaxSaveDay:    1,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -704,7 +704,7 @@ func TestJson(t *testing.T) {
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
 	equals(5, l.LogMaxSize, t)
-	equals(10, l.LogMaxAge, t)
+	equals(10, l.LogMaxSaveDay, t)
 	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
@@ -724,7 +724,7 @@ compress: true`[1:])
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
 	equals(5, l.LogMaxSize, t)
-	equals(10, l.LogMaxAge, t)
+	equals(10, l.LogMaxSaveDay, t)
 	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
@@ -744,7 +744,7 @@ compress = true`[1:]
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
 	equals(5, l.LogMaxSize, t)
-	equals(10, l.LogMaxAge, t)
+	equals(10, l.LogMaxSaveDay, t)
 	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
