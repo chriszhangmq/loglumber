@@ -771,7 +771,7 @@ func (l *Logger) strTime2TimeStamp(strTime string) int64 {
 	var err error
 	var tmpTime time.Time
 	if l.LocalTime {
-		tmpTime, err = time.ParseInLocation(backupTimeFormat, strTime, time.Local)
+		tmpTime, err = time.ParseInLocation(l.FileTimeFormat, strTime, time.Local)
 	} else {
 		tmpTime, err = time.Parse(l.FileTimeFormat, strTime)
 	}
