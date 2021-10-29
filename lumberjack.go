@@ -182,7 +182,7 @@ func (l *Logger) Init() {
 			//改名字
 			l.changeFileNameByTime(logFileUpdateTime)
 			//启动时，处理文件：压缩、删除
-			l.mill()
+			_ = l.millRunOnce()
 		}
 	}
 }
