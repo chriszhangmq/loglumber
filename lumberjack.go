@@ -45,8 +45,8 @@ const (
 	//压缩文件名的时间格式
 	backupTimeFormat = "2006-01-02T15-04-05"
 	compressSuffix   = ".gz"
-	//默认1GB分割一次
-	defaultMaxSize = 1024
+	//默认1PB分割一次(默认：永不按照文件大小分割)
+	defaultMaxSize = 1024 * 1024 * 1024
 )
 
 // ensure we always implement io.WriteCloser
