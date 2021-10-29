@@ -165,8 +165,9 @@ var (
 )
 
 func (l *Logger) Init() {
-	updateLastTimeOfToday(l.LocalTime)
 	updateCurrentTimestamp(l.LocalTime)
+	updateLastTimeOfToday(l.LocalTime)
+	updateYesterdayTime(l.LocalTime)
 	l.fullPathFileName = l.PathName + l.FileName + l.FileSuffix
 	isSplitDay = false
 	//若日志文件并非当天的，则执行打包命令
@@ -177,7 +178,7 @@ func (l *Logger) Init() {
 	if isExist {
 		//获取日志更新时间
 		logFileUpdateTime := getLogFileUpdateTime(l.fullPathFileName)
-		if len(logFileUpdateTime) > 0 {
+		if len(logFileUpdateTime) > 0 && l.strTime2TimeStamp(logFileUpdateTime) <= yesterdayLastTimestamp {
 			//改名字
 			l.changeFileNameByTime(logFileUpdateTime)
 			//启动时，处理文件：压缩、删除
@@ -675,10 +676,8 @@ func isNextDay(local bool) bool {
 func getLogFileUpdateTime(filePath string) string {
 	//读取最后一行
 	lastLine := getLastLineWithSeek(filePath)
-	fmt.Println(lastLine)
-	//获取改行中的时间
+	//获取该行中的时间
 	lastTime := getTimeFromStr(lastLine)
-	fmt.Println(lastTime)
 	return lastTime
 }
 
@@ -765,4 +764,19 @@ func (l *Logger) changeFileName(pathName string, odlFileName string, newFileName
 	if err != nil {
 		panic(err)
 	}
+}
+
+//时间字符串 =》 当前字符串的时间格式的时间戳
+func (l *Logger) strTime2TimeStamp(strTime string) int64 {
+	var err error
+	var tmpTime time.Time
+	if l.LocalTime {
+		tmpTime, err = time.ParseInLocation(backupTimeFormat, strTime, time.Local)
+	} else {
+		tmpTime, err = time.Parse(l.FileTimeFormat, strTime)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	return tmpTime.Unix()
 }
