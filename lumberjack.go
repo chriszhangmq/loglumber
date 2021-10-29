@@ -683,7 +683,7 @@ func getLogFileUpdateTime(filePath string) string {
 }
 
 func getTimeFromStr(str string) string {
-	planRegx := regexp.MustCompile("^([0-9]|[ ]|[-]|[:])+")
+	planRegx := regexp.MustCompile("([0-9]|[ ]|[-]|[:])+")
 	subs := planRegx.FindStringSubmatch(str)
 	if len(subs) > 0 {
 		return strings.TrimSpace(subs[0])
