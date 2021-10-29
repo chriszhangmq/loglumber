@@ -180,10 +180,8 @@ func (l *Logger) Init() {
 		if len(logFileUpdateTime) > 0 {
 			//改名字
 			l.changeFileNameByTime(logFileUpdateTime)
-			//压缩文件
-			if err := l.rotate(); err != nil {
-				panic(err)
-			}
+			//启动时，处理文件：压缩、删除
+			l.mill()
 		}
 	}
 }
