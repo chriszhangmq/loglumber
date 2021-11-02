@@ -177,7 +177,6 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	if l.SplitDay > 0 && l.isNextDay(l.LocalTime) {
 		l.updateLastTimeOfToday(l.LocalTime)
 		l.updateYesterdayTime(l.LocalTime)
-		fmt.Println("==========================currentTimestamp=  ", currentTimestamp, "===   lastTimestamp= ", lastTimestamp)
 		l.splitDayCount++
 		//是否达到分割要求
 		if l.SplitDay <= l.splitDayCount {
@@ -298,7 +297,6 @@ func backupName(name string, local bool) string {
 	}
 	if isSplitDay {
 		timestamp = time.Unix(yesterdayLastTimestamp, 0).Format(backupTimeFormat)
-		fmt.Println("====================================== ", timestamp)
 	} else {
 		timestamp = t.Format(backupTimeFormat)
 	}
@@ -382,7 +380,7 @@ func (l *Logger) millRunOnce() error {
 	}
 	if l.MaxAge > 0 {
 		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
-		cutoff := currentTime().Add(-1 * diff)
+		cutoff := currentTime().Add(-1 * (diff + 1))
 
 		var remaining []logInfo
 		for _, f := range files {
@@ -589,11 +587,8 @@ func (b byFormatTime) Len() int {
 
 //更新当天的23时59分时间戳
 func (l *Logger) updateLastTimeOfToday(local bool) {
-	t := currentTime()
-	if !local {
-		t = t.UTC()
-	}
-	endDate := t.Format(dateFormat) + "_23:59:59"
+	currTime := time.Unix(currentTimestamp, 0)
+	endDate := currTime.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
 		endTimeStamp, _ := time.Parse(timeFormat, endDate)
@@ -617,8 +612,6 @@ func (l *Logger) updateYesterdayTime(local bool) {
 		endTimeStamp, _ := time.ParseInLocation(timeFormat, yesterdayLastTime, time.Local)
 		yesterdayLastTimestamp = endTimeStamp.Unix()
 	}
-	fmt.Println("===============================yesterdayLastTimestamp = ", yesterdayLastTimestamp)
-
 }
 
 //更新当前时间戳
