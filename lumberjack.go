@@ -380,11 +380,11 @@ func (l *Logger) millRunOnce() error {
 	}
 	if l.MaxAge > 0 {
 		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
-		cutoff := currentTime().Add(-1 * (diff + 1))
+		cutoff := currentTime().Add(-1 * diff)
 
 		var remaining []logInfo
 		for _, f := range files {
-			if f.timestamp.Before(cutoff) {
+			if f.timestamp.Unix() < cutoff.Unix() {
 				remove = append(remove, f)
 			} else {
 				remaining = append(remaining, f)
