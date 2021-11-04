@@ -384,6 +384,9 @@ func (l *Logger) millRunOnce() error {
 
 		var remaining []logInfo
 		for _, f := range files {
+			a := f.timestamp.Unix()
+			b := cutoff.Unix()
+			fmt.Println(a, b)
 			if f.timestamp.Unix() < cutoff.Unix() {
 				remove = append(remove, f)
 			} else {
