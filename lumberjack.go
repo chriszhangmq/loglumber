@@ -136,8 +136,10 @@ var (
 	// to disk.
 	megabyte = 1024 * 1024
 
+	//当前时间
+	nowTime time.Time
 	//当前时间戳
-	currentTimestamp int64
+	nowTimestamp int64
 	//当天的23时59分时间戳
 	lastTimestamp int64
 	//昨天的23时59分时间戳
@@ -380,7 +382,8 @@ func (l *Logger) millRunOnce() error {
 	}
 	if l.MaxAge > 0 {
 		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
-		cutoff := currentTime().Add(-1 * diff)
+		l.updateCurrentTimestamp(l.LocalTime)
+		cutoff := nowTime.Add(-1 * diff)
 
 		var remaining []logInfo
 		for _, f := range files {
@@ -486,6 +489,9 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 		return time.Time{}, errors.New("mismatched extension")
 	}
 	ts := filename[len(prefix) : len(filename)-len(ext)]
+	if l.LocalTime {
+		return time.ParseInLocation(backupTimeFormat, ts, time.Local)
+	}
 	return time.Parse(backupTimeFormat, ts)
 }
 
@@ -590,7 +596,7 @@ func (b byFormatTime) Len() int {
 
 //更新当天的23时59分时间戳
 func (l *Logger) updateLastTimeOfToday(local bool) {
-	currTime := time.Unix(currentTimestamp, 0)
+	currTime := time.Unix(nowTimestamp, 0)
 	endDate := currTime.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
@@ -604,7 +610,7 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 }
 
 func (l *Logger) updateYesterdayTime(local bool) {
-	yesterdayTime := time.Unix(currentTimestamp, 0).AddDate(0, 0, -1)
+	yesterdayTime := time.Unix(nowTimestamp, 0).AddDate(0, 0, -1)
 	yesterdayLastTime := yesterdayTime.Format(dateFormat) + "_23:59:59"
 	if !local {
 		//UTC
@@ -623,11 +629,12 @@ func (l *Logger) updateCurrentTimestamp(local bool) {
 	if !local {
 		t = t.UTC()
 	}
-	currentTimestamp = t.Unix()
+	nowTime = t
+	nowTimestamp = t.Unix()
 }
 
 //当前时间是否超过0点（进入下一天）
 func (l *Logger) isNextDay(local bool) bool {
 	l.updateCurrentTimestamp(local)
-	return currentTimestamp > lastTimestamp
+	return nowTimestamp > lastTimestamp
 }
