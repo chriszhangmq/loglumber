@@ -140,11 +140,14 @@ var (
 	currentTimestamp int64
 	//当天的23时59分时间戳
 	lastTimestamp int64
+	//执行按天分割操作
+	isSplitDay bool
 )
 
 func (l *Logger) Init() {
 	l.updateLastTimeOfToday(l.LocalTime)
 	l.updateCurrentTimestamp(l.LocalTime)
+	isSplitDay = false
 }
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -177,10 +180,12 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 		//是否达到分割要求
 		if l.SplitDay <= l.splitDayCount {
 			l.splitDayCount = 0
+			isSplitDay = true
 			if err := l.rotate(); err != nil {
 				return 0, err
 			}
 		}
+		isSplitDay = false
 	}
 
 	//超过单个文件大小：压缩该文件
@@ -288,9 +293,16 @@ func backupName(name string, local bool) string {
 	if !local {
 		t = t.UTC()
 	}
-
+	if isSplitDay {
+		getYesterdayFileName(t)
+	}
 	timestamp := t.Format(backupTimeFormat)
 	return filepath.Join(dir, fmt.Sprintf("%s-%s%s", prefix, timestamp, ext))
+}
+
+func getYesterdayFileName(t time.Time) {
+	oneSecondAgo, _ := time.ParseDuration("-1s")
+	t.Add(oneSecondAgo)
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
@@ -591,7 +603,6 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 		endTimeStamp, _ := time.ParseInLocation(timeFormat, endDate, time.Local)
 		lastTimestamp = endTimeStamp.Unix()
 	}
-	fmt.Println(lastTimestamp)
 }
 
 //更新当前时间戳
@@ -601,12 +612,10 @@ func (l *Logger) updateCurrentTimestamp(local bool) {
 		t = t.UTC()
 	}
 	currentTimestamp = t.Unix()
-	fmt.Println(currentTimestamp)
 }
 
 //当前时间是否超过0点（进入下一天）
 func (l *Logger) isNextDay(local bool) bool {
 	l.updateCurrentTimestamp(local)
-	fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
 	return currentTimestamp > lastTimestamp
 }
