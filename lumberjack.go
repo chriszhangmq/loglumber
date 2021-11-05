@@ -140,6 +140,8 @@ var (
 	currentTimestamp int64
 	//当天的23时59分时间戳
 	lastTimestamp int64
+	//昨天的23时59分时间戳
+	yesterdayTimestamp int64
 	//执行按天分割操作
 	isSplitDay bool
 )
@@ -173,8 +175,9 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 
 	//按天分割日志
 	if l.SplitDay > 0 && l.isNextDay(l.LocalTime) {
-		l.updateLastTimeOfToday(l.LocalTime)
 		l.updateCurrentTimestamp(l.LocalTime)
+		l.updateLastTimeOfToday(l.LocalTime)
+		l.updateYesterdayTime(l.LocalTime)
 		fmt.Println(currentTimestamp, "    ===    ", lastTimestamp)
 		l.splitDayCount++
 		//是否达到分割要求
@@ -285,6 +288,7 @@ func (l *Logger) openNew() error {
 // between the filename and the extension, using the local time if requested
 // (otherwise UTC).
 func backupName(name string, local bool) string {
+	var timestamp string
 	dir := filepath.Dir(name)
 	filename := filepath.Base(name)
 	ext := filepath.Ext(filename)
@@ -294,15 +298,12 @@ func backupName(name string, local bool) string {
 		t = t.UTC()
 	}
 	if isSplitDay {
-		getYesterdayFileName(t)
+		timestamp = time.Unix(lastTimestamp, 0).Format(backupTimeFormat)
+		fmt.Println("====================================== ", timestamp)
+	} else {
+		timestamp = t.Format(backupTimeFormat)
 	}
-	timestamp := t.Format(backupTimeFormat)
 	return filepath.Join(dir, fmt.Sprintf("%s-%s%s", prefix, timestamp, ext))
-}
-
-func getYesterdayFileName(t time.Time) {
-	oneSecondAgo, _ := time.ParseDuration("-1s")
-	t.Add(oneSecondAgo)
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
@@ -602,6 +603,25 @@ func (l *Logger) updateLastTimeOfToday(local bool) {
 		//local
 		endTimeStamp, _ := time.ParseInLocation(timeFormat, endDate, time.Local)
 		lastTimestamp = endTimeStamp.Unix()
+	}
+}
+
+func (l *Logger) updateYesterdayTime(local bool) {
+	aDayAgo, _ := time.ParseDuration("-24h")
+	t := currentTime()
+	if !local {
+		t = t.UTC()
+	}
+	t = t.Add(aDayAgo)
+	endDate := t.Format(dateFormat) + "_23:59:59"
+	if !local {
+		//UTC
+		endTimeStamp, _ := time.Parse(timeFormat, endDate)
+		yesterdayTimestamp = endTimeStamp.Unix()
+	} else {
+		//local
+		endTimeStamp, _ := time.ParseInLocation(timeFormat, endDate, time.Local)
+		yesterdayTimestamp = endTimeStamp.Unix()
 	}
 }
 
