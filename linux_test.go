@@ -22,9 +22,9 @@ func TestMaintainMode(t *testing.T) {
 	f.Close()
 
 	l := &Logger{
-		fullPathFileName: filename,
-		MaxBackups:       1,
-		MaxSize:          100, // megabytes
+		fullPathFileName:   filename,
+		LogMaxSaveQuantity: 1,
+		LogMaxSize:         100, // megabytes
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -65,9 +65,9 @@ func TestMaintainOwner(t *testing.T) {
 	f.Close()
 
 	l := &Logger{
-		fullPathFileName: filename,
-		MaxBackups:       1,
-		MaxSize:          100, // megabytes
+		fullPathFileName:   filename,
+		LogMaxSaveQuantity: 1,
+		LogMaxSize:         100, // megabytes
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -98,10 +98,10 @@ func TestCompressMaintainMode(t *testing.T) {
 	f.Close()
 
 	l := &Logger{
-		Compress:         true,
-		fullPathFileName: filename,
-		MaxBackups:       1,
-		MaxSize:          100, // megabytes
+		Compress:           true,
+		fullPathFileName:   filename,
+		LogMaxSaveQuantity: 1,
+		LogMaxSize:         100, // megabytes
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -148,10 +148,10 @@ func TestCompressMaintainOwner(t *testing.T) {
 	f.Close()
 
 	l := &Logger{
-		Compress:         true,
-		fullPathFileName: filename,
-		MaxBackups:       1,
-		MaxSize:          100, // megabytes
+		Compress:           true,
+		fullPathFileName:   filename,
+		LogMaxSaveQuantity: 1,
+		LogMaxSize:         100, // megabytes
 	}
 	defer l.Close()
 	b := []byte("boo!")

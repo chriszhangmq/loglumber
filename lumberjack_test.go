@@ -81,7 +81,7 @@ func TestWriteTooLong(t *testing.T) {
 	defer os.RemoveAll(dir)
 	l := &Logger{
 		fullPathFileName: logFile(dir),
-		MaxSize:          5,
+		LogMaxSize:       5,
 	}
 	defer l.Close()
 	b := []byte("booooooooooooooo!")
@@ -89,7 +89,7 @@ func TestWriteTooLong(t *testing.T) {
 	notNil(err, t)
 	equals(0, n, t)
 	equals(err.Error(),
-		fmt.Sprintf("write length %d exceeds maximum file size %d", len(b), l.MaxSize), t)
+		fmt.Sprintf("write length %d exceeds maximum file size %d", len(b), l.LogMaxSize), t)
 	_, err = os.Stat(logFile(dir))
 	assert(os.IsNotExist(err), t, "File exists, but should not have been created")
 }
@@ -137,7 +137,7 @@ func TestAutoRotate(t *testing.T) {
 	filename := logFile(dir)
 	l := &Logger{
 		fullPathFileName: filename,
-		MaxSize:          10,
+		LogMaxSize:       10,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -174,7 +174,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	filename := logFile(dir)
 	l := &Logger{
 		fullPathFileName: filename,
-		MaxSize:          10,
+		LogMaxSize:       10,
 	}
 	defer l.Close()
 
@@ -204,9 +204,9 @@ func TestMaxBackups(t *testing.T) {
 
 	filename := logFile(dir)
 	l := &Logger{
-		fullPathFileName: filename,
-		MaxSize:          10,
-		MaxBackups:       1,
+		fullPathFileName:   filename,
+		LogMaxSize:         10,
+		LogMaxSaveQuantity: 1,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -356,9 +356,9 @@ func TestCleanupExistingBackups(t *testing.T) {
 	isNil(err, t)
 
 	l := &Logger{
-		fullPathFileName: filename,
-		MaxSize:          10,
-		MaxBackups:       1,
+		fullPathFileName:   filename,
+		LogMaxSize:         10,
+		LogMaxSaveQuantity: 1,
 	}
 	defer l.Close()
 
@@ -387,8 +387,8 @@ func TestMaxAge(t *testing.T) {
 	filename := logFile(dir)
 	l := &Logger{
 		fullPathFileName: filename,
-		MaxSize:          10,
-		MaxAge:           1,
+		LogMaxSize:       10,
+		LogMaxAge:        1,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -515,7 +515,7 @@ func TestLocalTime(t *testing.T) {
 
 	l := &Logger{
 		fullPathFileName: logFile(dir),
-		MaxSize:          10,
+		LogMaxSize:       10,
 		LocalTime:        true,
 	}
 	defer l.Close()
@@ -541,9 +541,9 @@ func TestRotate(t *testing.T) {
 	filename := logFile(dir)
 
 	l := &Logger{
-		fullPathFileName: filename,
-		MaxBackups:       1,
-		MaxSize:          100, // megabytes
+		fullPathFileName:   filename,
+		LogMaxSaveQuantity: 1,
+		LogMaxSize:         100, // megabytes
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -601,7 +601,7 @@ func TestCompressOnRotate(t *testing.T) {
 	l := &Logger{
 		Compress:         true,
 		fullPathFileName: filename,
-		MaxSize:          10,
+		LogMaxSize:       10,
 	}
 	defer l.Close()
 	b := []byte("boo!")
@@ -650,7 +650,7 @@ func TestCompressOnResume(t *testing.T) {
 	l := &Logger{
 		Compress:         true,
 		fullPathFileName: filename,
-		MaxSize:          10,
+		LogMaxSize:       10,
 	}
 	defer l.Close()
 
@@ -703,9 +703,9 @@ func TestJson(t *testing.T) {
 	err := json.Unmarshal(data, &l)
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
-	equals(5, l.MaxSize, t)
-	equals(10, l.MaxAge, t)
-	equals(3, l.MaxBackups, t)
+	equals(5, l.LogMaxSize, t)
+	equals(10, l.LogMaxAge, t)
+	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
 }
@@ -723,9 +723,9 @@ compress: true`[1:])
 	err := yaml.Unmarshal(data, &l)
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
-	equals(5, l.MaxSize, t)
-	equals(10, l.MaxAge, t)
-	equals(3, l.MaxBackups, t)
+	equals(5, l.LogMaxSize, t)
+	equals(10, l.LogMaxAge, t)
+	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
 }
@@ -743,9 +743,9 @@ compress = true`[1:]
 	md, err := toml.Decode(data, &l)
 	isNil(err, t)
 	equals("foo", l.fullPathFileName, t)
-	equals(5, l.MaxSize, t)
-	equals(10, l.MaxAge, t)
-	equals(3, l.MaxBackups, t)
+	equals(5, l.LogMaxSize, t)
+	equals(10, l.LogMaxAge, t)
+	equals(3, l.LogMaxSaveQuantity, t)
 	equals(true, l.LocalTime, t)
 	equals(true, l.Compress, t)
 	equals(0, len(md.Undecoded()), t)

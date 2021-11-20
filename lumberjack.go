@@ -55,13 +55,13 @@ var _ io.WriteCloser = (*Logger)(nil)
 // Logger is an io.WriteCloser that writes to the specified filename.
 //
 // Logger opens or creates the logfile on first Write.  If the file exists and
-// is less than MaxSize megabytes, lumberjack will open and append to that file.
-// If the file exists and its size is >= MaxSize megabytes, the file is renamed
+// is less than LogMaxSize megabytes, lumberjack will open and append to that file.
+// If the file exists and its size is >= LogMaxSize megabytes, the file is renamed
 // by putting the current time in a timestamp in the name immediately before the
 // file's extension (or the end of the filename if there's no extension). A new
 // log file is then created using original filename.
 //
-// Whenever a write would cause the current log file exceed MaxSize megabytes,
+// Whenever a write would cause the current log file exceed LogMaxSize megabytes,
 // the current file is closed, renamed, and a new log file created with the
 // original name. Thus, the filename you give Logger is always the "current" log
 // file.
@@ -78,32 +78,32 @@ var _ io.WriteCloser = (*Logger)(nil)
 //
 // Whenever a new logfile gets created, old log files may be deleted.  The most
 // recent files according to the encoded timestamp will be retained, up to a
-// number equal to MaxBackups (or all of them if MaxBackups is 0).  Any files
-// with an encoded timestamp older than MaxAge days are deleted, regardless of
-// MaxBackups.  Note that the time encoded in the timestamp is the rotation
+// number equal to LogMaxSaveQuantity (or all of them if LogMaxSaveQuantity is 0).  Any files
+// with an encoded timestamp older than LogMaxAge days are deleted, regardless of
+// LogMaxSaveQuantity.  Note that the time encoded in the timestamp is the rotation
 // time, which may differ from the last time that file was written to.
 //
-// If MaxBackups and MaxAge are both 0, no old log files will be deleted.
+// If LogMaxSaveQuantity and LogMaxAge are both 0, no old log files will be deleted.
 type Logger struct {
 	// fullPathFileName is the file to write logs to.  Backup log files will be retained
 	// in the same directory.  It uses <processname>-lumberjack.log in
 	// os.TempDir() if empty.
 
-	// MaxSize is the maximum size in megabytes of the log file before it gets
+	// LogMaxSize is the maximum size in megabytes of the log file before it gets
 	// rotated. It defaults to 100 megabytes.
-	MaxSize int `json:"MaxSize" yaml:"MaxSize"`
+	LogMaxSize int `json:"LogMaxSize" yaml:"LogMaxSize"`
 
-	// MaxAge is the maximum number of days to retain old log files based on the
+	// LogMaxAge is the maximum number of days to retain old log files based on the
 	// timestamp encoded in their filename.  Note that a day is defined as 24
 	// hours and may not exactly correspond to calendar days due to daylight
 	// savings, leap seconds, etc. The default is not to remove old log files
 	// based on age.
-	MaxAge int `json:"MaxAge" yaml:"MaxAge"`
+	LogMaxAge int `json:"LogMaxAge" yaml:"LogMaxAge"`
 
-	// MaxBackups is the maximum number of old log files to retain.  The default
-	// is to retain all old log files (though MaxAge may still cause them to get
+	// LogMaxSaveQuantity is the maximum number of old log files to retain.  The default
+	// is to retain all old log files (though LogMaxAge may still cause them to get
 	// deleted.)
-	MaxBackups int `json:"MaxBackups" yaml:"MaxBackups"`
+	LogMaxSaveQuantity int `json:"LogMaxSaveQuantity" yaml:"LogMaxSaveQuantity"`
 
 	// LocalTime determines if the time used for formatting the timestamps in
 	// backup files is the computer's local time.  The default is to use UTC
@@ -115,19 +115,19 @@ type Logger struct {
 	Compress bool `json:"Compress" yaml:"Compress"`
 
 	//日志分割单位：天
-	SplitDay int `json:"SplitDay" yaml:"SplitDay"`
+	LogSplitDay int `json:"LogSplitDay" yaml:"LogSplitDay"`
 
 	//日志保存路径
-	PathName string `json:"PathName" yaml:"PathName"`
+	LogPathName string `json:"LogPathName" yaml:"LogPathName"`
 
 	//日志名称
-	FileName string `json:"FileName" yaml:"FileName"`
+	LogFileName string `json:"LogFileName" yaml:"LogFileName"`
 
 	//日志后缀
-	FileSuffix string `json:"FileSuffix" yaml:"FileSuffix"`
+	LogFileSuffix string `json:"LogFileSuffix" yaml:"LogFileSuffix"`
 
 	//日志中的时间格式
-	FileTimeFormat string `json:"FileTimeFormat" yaml:"FileTimeFormat"`
+	LogFileTimeFormat string `json:"LogFileTimeFormat" yaml:"LogFileTimeFormat"`
 
 	//统计过了几天：是否到达需要分割日志的时候
 	splitDayCount int
@@ -149,7 +149,7 @@ var (
 	// os_Stat exists so it can be mocked out by tests.
 	osStat = os.Stat
 
-	// megabyte is the conversion factor between MaxSize and bytes.  It is a
+	// megabyte is the conversion factor between LogMaxSize and bytes.  It is a
 	// variable so tests can mock it out and not need to write megabytes of data
 	// to disk.
 	megabyte = 1024 * 1024
@@ -170,7 +170,7 @@ func (l *Logger) Init() {
 	updateCurrentTimestamp(l.LocalTime)
 	updateLastTimeOfToday(l.LocalTime)
 	updateYesterdayTime(l.LocalTime)
-	l.fullPathFileName = l.PathName + l.FileName + l.FileSuffix
+	l.fullPathFileName = l.LogPathName + l.LogFileName + l.LogFileSuffix
 	isSplitDay = false
 	//若日志文件并非当天的，则执行打包命令
 	isExist, err := pathFileExist(l.fullPathFileName)
@@ -193,9 +193,9 @@ func (l *Logger) Init() {
 }
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
-// than MaxSize, the file is closed, renamed to include a timestamp of the
+// than LogMaxSize, the file is closed, renamed to include a timestamp of the
 // current time, and a new log file is created using the original log file name.
-// If the length of the write is greater than MaxSize, an error is returned.
+// If the length of the write is greater than LogMaxSize, an error is returned.
 func (l *Logger) Write(p []byte) (n int, err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -214,12 +214,12 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	}
 
 	//按天分割日志
-	if l.SplitDay > 0 && isNextDay(l.LocalTime) {
+	if l.LogSplitDay > 0 && isNextDay(l.LocalTime) {
 		updateLastTimeOfToday(l.LocalTime)
 		updateYesterdayTime(l.LocalTime)
 		l.splitDayCount++
 		//是否达到分割要求
-		if l.SplitDay <= l.splitDayCount {
+		if l.LogSplitDay <= l.splitDayCount {
 			l.splitDayCount = 0
 			isSplitDay = true
 			if err := l.rotate(); err != nil {
@@ -344,8 +344,8 @@ func backupName(name string, local bool) string {
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
-// would not put it over MaxSize.  If there is no such file or the write would
-// put it over the MaxSize, a new file is created.
+// would not put it over LogMaxSize.  If there is no such file or the write would
+// put it over the LogMaxSize, a new file is created.
 func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
@@ -384,10 +384,10 @@ func (l *Logger) filename() string {
 
 // millRunOnce performs compression and removal of stale log files.
 // Log files are compressed if enabled via configuration and old log
-// files are removed, keeping at most l.MaxBackups files, as long as
-// none of them are older than MaxAge.
+// files are removed, keeping at most l.LogMaxSaveQuantity files, as long as
+// none of them are older than LogMaxAge.
 func (l *Logger) millRunOnce() error {
-	if l.MaxBackups == 0 && l.MaxAge == 0 && !l.Compress {
+	if l.LogMaxSaveQuantity == 0 && l.LogMaxAge == 0 && !l.Compress {
 		return nil
 	}
 
@@ -398,7 +398,7 @@ func (l *Logger) millRunOnce() error {
 
 	var compress, remove []logInfo
 
-	if l.MaxBackups > 0 && l.MaxBackups < len(files) {
+	if l.LogMaxSaveQuantity > 0 && l.LogMaxSaveQuantity < len(files) {
 		preserved := make(map[string]bool)
 		var remaining []logInfo
 		for _, f := range files {
@@ -410,7 +410,7 @@ func (l *Logger) millRunOnce() error {
 			}
 			preserved[fn] = true
 
-			if len(preserved) > l.MaxBackups {
+			if len(preserved) > l.LogMaxSaveQuantity {
 				remove = append(remove, f)
 			} else {
 				remaining = append(remaining, f)
@@ -418,8 +418,8 @@ func (l *Logger) millRunOnce() error {
 		}
 		files = remaining
 	}
-	if l.MaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
+	if l.LogMaxAge > 0 {
+		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxAge))
 		updateCurrentTimestamp(l.LocalTime)
 		cutoff := nowTime.Add(-1 * diff)
 
@@ -532,10 +532,10 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 
 // max returns the maximum size in bytes of log files before rolling.
 func (l *Logger) max() int64 {
-	if l.MaxSize == 0 {
+	if l.LogMaxSize == 0 {
 		return int64(defaultMaxSize * megabyte)
 	}
-	return int64(l.MaxSize) * int64(megabyte)
+	return int64(l.LogMaxSize) * int64(megabyte)
 }
 
 // dir returns the directory for the current filename.
@@ -746,9 +746,9 @@ func (l *Logger) changeFileNameByTime(lastTime string) string {
 	var err error
 	//时间字符串 =》 当前字符串的时间格式
 	if l.LocalTime {
-		newFileTime, err = time.ParseInLocation(l.FileTimeFormat, lastTime, time.Local)
+		newFileTime, err = time.ParseInLocation(l.LogFileTimeFormat, lastTime, time.Local)
 	} else {
-		newFileTime, err = time.Parse(l.FileTimeFormat, lastTime)
+		newFileTime, err = time.Parse(l.LogFileTimeFormat, lastTime)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -756,10 +756,10 @@ func (l *Logger) changeFileNameByTime(lastTime string) string {
 	//当前字符串的时间格式 =》 时间戳 =》 log文件的时间格式
 	newFileTimestamp := newFileTime.Unix()
 	//新文件名
-	newFileName := l.FileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat)
+	newFileName := l.LogFileName + "-" + time.Unix(newFileTimestamp, 0).Format(backupTimeFormat)
 	//更改文件名
-	l.changeFileName(l.PathName, l.FileName+l.FileSuffix, newFileName+l.FileSuffix)
-	return newFileName + l.FileSuffix
+	l.changeFileName(l.LogPathName, l.LogFileName+l.LogFileSuffix, newFileName+l.LogFileSuffix)
+	return newFileName + l.LogFileSuffix
 }
 
 func (l *Logger) changeFileName(pathName string, odlFileName string, newFileName string) {
@@ -774,9 +774,9 @@ func (l *Logger) strTime2TimeStamp(strTime string) int64 {
 	var err error
 	var tmpTime time.Time
 	if l.LocalTime {
-		tmpTime, err = time.ParseInLocation(l.FileTimeFormat, strTime, time.Local)
+		tmpTime, err = time.ParseInLocation(l.LogFileTimeFormat, strTime, time.Local)
 	} else {
-		tmpTime, err = time.Parse(l.FileTimeFormat, strTime)
+		tmpTime, err = time.Parse(l.LogFileTimeFormat, strTime)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -792,8 +792,8 @@ func (l *Logger) compressFiles(fileName string) error {
 
 	var remaining logInfo
 
-	if l.MaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
+	if l.LogMaxAge > 0 {
+		diff := time.Duration(int64(24*time.Hour) * int64(l.LogMaxAge))
 		updateCurrentTimestamp(l.LocalTime)
 		cutoff := nowTime.Add(-1 * diff)
 		for _, f := range files {
